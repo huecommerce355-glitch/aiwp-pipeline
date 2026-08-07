@@ -1,7 +1,7 @@
 ---
 name: aiwp-pipeline
 description: Use when orchestrating AI Work Platform pipelines with manifest-driven S1-S8 stages.
-version: 1.1.0
+version: 1.2.0
 author: OpenAI
 license: MIT
 platforms: [Codex, Hermes]
@@ -38,6 +38,10 @@ manifest 的 `pipeline.execution` 声明并行策略：`max_parallel` 限制同�
 ## pipeline_manifest.yaml 说明
 
 manifest 包含 `pipeline` 元数据、结构化 `protocol`、可扩展的 `stages` 和 `templates`。模板通过阶段 ID 引用既有阶段，不复制阶段定义；因此同一 manifest 可以被重复执行，也可以支持未来的不同 pipeline 模板。`acceptance.reproducibility_check` 要求用同一 manifest 重复执行第二条流水线。
+
+## Trace Continuity
+
+并行执行时，`trace_id_policy: per-instance` 为每个实例分配独立 trace ID，并贯穿所有阶段结果。S8 `knowledge.execution.write` 会在 stage 结果的 `payload.trace_id` 中携带实例 trace ID。调用方将该 payload 合并到 knowledge-gateway v1.2 的 `knowledge_write.write_knowledge` kwargs，即可完成 `trace_id` 的自动传递；runner 不直接导入跨组件的 `knowledge_write`。
 
 ## acceptance_gates.md 摘要
 

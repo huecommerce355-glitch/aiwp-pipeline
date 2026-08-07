@@ -72,12 +72,16 @@ def run_instance(instance: dict[str, Any], manifest: dict[str, Any], lock_path: 
     for stage in instance["stages"]:
         stage["trace_id"] = trace_id
         stage["status"] = "completed"
-        if stage["stage"] == "S8" and manifest["pipeline"]["execution"]["knowledge_write_lock"]:
-            with KnowledgeWriteLock(lock_path, timeout=lock_timeout):
-                stage["knowledge_lock"] = "acquired"
-                stage["knowledge_write"] = "completed"
-        elif stage["stage"] == "S8":
-            stage["knowledge_lock"] = "disabled"
+        if stage["stage"] == "S8":
+            # The caller injects this payload into knowledge_write.write_knowledge.
+            # Keeping the gateway out of this module avoids a cross-component import.
+            stage["payload"] = {"trace_id": trace_id}
+            if manifest["pipeline"]["execution"]["knowledge_write_lock"]:
+                with KnowledgeWriteLock(lock_path, timeout=lock_timeout):
+                    stage["knowledge_lock"] = "acquired"
+                    stage["knowledge_write"] = "completed"
+            else:
+                stage["knowledge_lock"] = "disabled"
     instance["status"] = "completed"
     return instance
 
