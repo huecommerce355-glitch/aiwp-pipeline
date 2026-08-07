@@ -4,6 +4,10 @@ pipeline:
   protocol:
     name: "HACP"
     version: "1.0"
+  execution:
+    max_parallel: 2
+    trace_id_policy: "per-instance"
+    knowledge_write_lock: true
   stages:
     - id: S1
       name: strategy.context.request

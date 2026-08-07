@@ -1,7 +1,7 @@
 ---
 name: aiwp-pipeline
 description: Use when orchestrating AI Work Platform pipelines with manifest-driven S1-S8 stages.
-version: 1.0.0
+version: 1.1.0
 author: OpenAI
 license: MIT
 platforms: [Codex, Hermes]
@@ -30,6 +30,10 @@ AI Work Platform 流水线编排层：使用 manifest 驱动 S1-S8 八阶段执�
 将 `pipeline_manifest.yaml` 作为唯一流程声明：读取阶段 ID，解析 gateway、inputs、outputs 和 verification，然后将上下文传递给下一阶段。新增流程时添加模板并复用阶段定义；只有在阶段契约确实不同的时候才新增阶段。
 
 每阶段 HACP 日志至少应包含 pipeline、stage、gateway、inputs 摘要、outputs 摘要、verification 结果和时间/状态。敏感或原始内容遵循对应 gateway 的安全策略。
+
+## Parallel Execution
+
+manifest 的 `pipeline.execution` 声明并行策略：`max_parallel` 限制同时运行的实例数，`trace_id_policy: per-instance` 为每条实例流水线分配独立 UUID，并将其贯穿所有阶段记录；`knowledge_write_lock: true` 要求实例进入 S8 前取得 `.locks/knowledge.lock`，写入完成后释放。当前实现采用保守的受限并发，不引入完整 worker pool；超出上限的实例请求会被拒绝。
 
 ## pipeline_manifest.yaml 说明
 
