@@ -1,0 +1,68 @@
+pipeline:
+  name: "aiwp-standard"
+  version: "1.0"
+  protocol:
+    name: "HACP"
+    version: "1.0"
+  stages:
+    - id: S1
+      name: strategy.context.request
+      gateway: chatgpt-strategy-gateway
+      description: "读取项目上下文（P0-P3 分级检索）"
+      inputs: [project_id]
+      outputs: [context_summary]
+      verification: "P0 非空或降级警告"
+    - id: S2
+      name: strategy.plan.generate
+      gateway: chatgpt-strategy-gateway
+      description: "生成战略计划（内存态，ADR 不落盘）"
+      inputs: [goal, project_id]
+      outputs: [plan]
+      verification: "计划含目标/成功标准"
+    - id: S3
+      name: strategy.handoff
+      gateway: chatgpt-strategy-gateway
+      description: "4 支柱验证后转交 hermes-orchestrator"
+      inputs: [strategy_id, goal, priorities, success_criteria, constraints]
+      outputs: [task_id, forwarded_to]
+      verification: "target == hermes-orchestrator（不直连 ai-development-manager）"
+    - id: S4
+      name: task.decompose
+      gateway: ai-development-manager
+      description: "任务拆解为子任务 DAG"
+      inputs: [goal]
+      outputs: [subtasks]
+      verification: "子任务可独立验收"
+    - id: S5
+      name: coding-agent.dispatch
+      gateway: coding-agent-gateway
+      description: "dispatch Codex 执行（workspace-write, pty）"
+      inputs: [repo_path, task_spec]
+      outputs: [artifacts, codex_session_id]
+      verification: "产物存在 + 测试通过"
+    - id: S6
+      name: verification
+      gateway: coding-agent-gateway
+      description: "独立验证（pytest 复跑 + 产物检查）"
+      inputs: [artifacts, test_command]
+      outputs: [verification_result]
+      verification: "pytest 全绿"
+    - id: S7
+      name: github.pr.lifecycle
+      gateway: github-development-gateway
+      description: "Git Data API 分支 → REST PR → squash merge"
+      inputs: [repo, branch, files]
+      outputs: [pr_number, merge_sha]
+      verification: "merge_state == merged"
+    - id: S8
+      name: knowledge.execution.write
+      gateway: obsidian-knowledge-gateway
+      description: "写 execution-report（summary/metrics/artifacts，无 raw）"
+      inputs: [project_id, report_data]
+      outputs: [report_path]
+      verification: "索引同步 + 无 raw 内容"
+  templates:
+    - id: "standard"
+      stages: [S1, S2, S3, S4, S5, S6, S7, S8]
+  acceptance:
+    reproducibility_check: "同一 manifest 可重复执行第二条流水线"
