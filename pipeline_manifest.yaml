@@ -74,13 +74,36 @@ pipeline:
       outputs: [verification_result]
       verification: "pytest 全绿"
     - id: S7
+      name: review
+      gateway: aiwp-pipeline
+      description: "Agent review (read-only): review agent resolves via capability routing (cursor primary, codex.review degraded)"
+      inputs: [artifacts, test_result, diff_stats]
+      outputs: [review_result]
+      verification: "review_result schema valid and quality gate evaluated"
+      review:
+        read_only: true
+        review_agent:
+          capability: code_review
+          primary: cursor
+          degraded: codex.review
+    - id: S7b
+      name: rework
+      gateway: aiwp-pipeline
+      description: "Rework loop: FAIL -> return to execution agent (codex), max 3 rounds, then human escalate"
+      inputs: [review_result, rework_round]
+      outputs: [reworked_artifacts, rework_round]
+      verification: "continue through round 3 or escalate to human after round 3"
+      rework:
+        max_rounds: 3
+        escalate: human
+    - id: S8
       name: github.pr.lifecycle
       gateway: github-development-gateway
       description: "Git Data API 分支 → REST PR → squash merge"
       inputs: [repo, branch, files]
       outputs: [pr_number, merge_sha]
       verification: "merge_state == merged"
-    - id: S8
+    - id: S9
       name: knowledge.execution.write
       gateway: obsidian-knowledge-gateway
       description: "写 execution-report（summary/metrics/artifacts，无 raw）"
@@ -89,6 +112,6 @@ pipeline:
       verification: "索引同步 + 无 raw 内容"
   templates:
     - id: "standard"
-      stages: [S1, S2, S3, S4, S5, S6, S7, S8]
+      stages: [S1, S2, S3, S4, S5, S6, S7, S7b, S8, S9]
   acceptance:
     reproducibility_check: "同一 manifest 可重复执行第二条流水线"

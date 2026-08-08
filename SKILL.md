@@ -1,7 +1,7 @@
 ---
 name: aiwp-pipeline
-description: Use when orchestrating AI Work Platform pipelines with manifest-driven S1-S8 stages.
-version: 1.3.0
+description: Use when orchestrating AI Work Platform pipelines with manifest-driven S1-S9 stages.
+version: 1.4.0
 author: OpenAI
 license: MIT
 platforms: [Codex, Hermes]
@@ -13,7 +13,7 @@ related_skills: [chatgpt-strategy-gateway, hermes-orchestrator, ai-development-m
 
 ## Overview
 
-AI Work Platform 流水线编排层：使用 manifest 驱动 S1-S8 八阶段执行，不把流程硬编码在 Skill 或调用方中。阶段可由模板组合，协议和验证点由 manifest 明确声明。
+AI Work Platform 流水线编排层：使用 manifest 驱动 S1-S9 执行，不把流程硬编码在 Skill 或调用方中。阶段可由模板组合，协议和验证点由 manifest 明确声明。
 
 ## How to Load
 
@@ -37,9 +37,15 @@ AI Work Platform 流水线编排层：使用 manifest 驱动 S1-S8 八阶段执�
 
 Agent 的 `production: true` 表示该 agent 已注册为生产路由候选；`auth_status` 描述当前认证状态，不会将 agent 标记为不可用。若 `cursor` 未登录，review 请求按声明的 `fallback` 降级到 `codex.review`，并保留 `degraded_from: cursor`，以便调用方和日志识别降级来源。
 
+## Review Engine (v1.4)
+
+S7 是只读 Review Engine：通过 `code_review` capability 路由到 Cursor；Cursor 未登录时降级到 `codex.review` 并标注 `degraded_from: cursor`。第一阶段使用 mock review agent，根据请求提供的评分生成 Review Result，不调用 Cursor，也不修改 artifact 或代码文件。
+
+Quality gate 使用 correctness 30%、test coverage 20%、maintainability 20%、security 15%、convention 15% 的加权平均：低于 60 或存在 critical blocker 为 `FAIL`，60–79 或有 warning 为 `CONDITIONAL`，否则为 `PASS`。S7b 对 FAIL 最多重工 3 轮，仍失败则升级 human。
+
 ## Parallel Execution
 
-manifest 的 `pipeline.execution` 声明并行策略：`max_parallel` 限制同时运行的实例数，`trace_id_policy: per-instance` 为每条实例流水线分配独立 UUID，并将其贯穿所有阶段记录；`knowledge_write_lock: true` 要求实例进入 S8 前取得 `.locks/knowledge.lock`，写入完成后释放。当前实现采用保守的受限并发，不引入完整 worker pool；超出上限的实例请求会被拒绝。
+manifest 的 `pipeline.execution` 声明并行策略：`max_parallel` 限制同时运行的实例数，`trace_id_policy: per-instance` 为每条实例流水线分配独立 UUID，并将其贯穿所有阶段记录；`knowledge_write_lock: true` 要求实例进入 S9 前取得 `.locks/knowledge.lock`，写入完成后释放。当前实现采用保守的受限并发，不引入完整 worker pool；超出上限的实例请求会被拒绝。
 
 ## pipeline_manifest.yaml 说明
 
@@ -47,7 +53,7 @@ manifest 包含 `pipeline` 元数据、结构化 `protocol`、可扩展的 `stag
 
 ## Trace Continuity
 
-并行执行时，`trace_id_policy: per-instance` 为每个实例分配独立 trace ID，并贯穿所有阶段结果。S8 `knowledge.execution.write` 会在 stage 结果的 `payload.trace_id` 中携带实例 trace ID。调用方将该 payload 合并到 knowledge-gateway v1.2 的 `knowledge_write.write_knowledge` kwargs，即可完成 `trace_id` 的自动传递；runner 不直接导入跨组件的 `knowledge_write`。
+并行执行时，`trace_id_policy: per-instance` 为每个实例分配独立 trace ID，并贯穿所有阶段结果。S9 `knowledge.execution.write` 会在 stage 结果的 `payload.trace_id` 中携带实例 trace ID。调用方将该 payload 合并到 knowledge-gateway v1.2 的 `knowledge_write.write_knowledge` kwargs，即可完成 `trace_id` 的自动传递；runner 不直接导入跨组件的 `knowledge_write`。
 
 ## acceptance_gates.md 摘要
 
@@ -58,5 +64,5 @@ M0.1 包含五门：测试全绿、Hermes 零写、零 git、报告沉淀、HACP
 - 不要把阶段顺序硬编码到 Skill 逻辑中；以 manifest 的模板引用为准。
 - S2 计划保持内存态，ADR 不自动落盘。
 - S3 必须经 `hermes-orchestrator`，不得直连 `ai-development-manager`。
-- S8 只写 execution-report 的 summary/metrics/artifacts，不写 raw 内容。
+- S9 只写 execution-report 的 summary/metrics/artifacts，不写 raw 内容。
 - 不要把 verification 文本当作已完成的验证；必须实际执行并记录结果。
