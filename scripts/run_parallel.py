@@ -72,7 +72,9 @@ def run_instance(instance: dict[str, Any], manifest: dict[str, Any], lock_path: 
     for stage in instance["stages"]:
         stage["trace_id"] = trace_id
         stage["status"] = "completed"
-        if stage["stage"] == "S8":
+        if stage["stage"] in {"S8", "S9"} and any(
+            item["id"] == "S9" for item in manifest["pipeline"]["stages"]
+        ):
             # The caller injects this payload into knowledge_write.write_knowledge.
             # Keeping the gateway out of this module avoids a cross-component import.
             stage["payload"] = {"trace_id": trace_id}

@@ -19,8 +19,8 @@ def test_s3_forwarded_target_constraint():
     assert "hermes-orchestrator" in stage["description"]
 
 
-def test_s8_has_no_raw_constraint():
-    stage = next(stage for stage in load_manifest()["pipeline"]["stages"] if stage["id"] == "S8")
+def test_s9_has_no_raw_constraint():
+    stage = next(stage for stage in load_manifest()["pipeline"]["stages"] if stage["id"] == "S9")
     text = f"{stage['description']} {stage['verification']}".lower()
     assert "raw" in text
     assert "summary" in stage["description"]
