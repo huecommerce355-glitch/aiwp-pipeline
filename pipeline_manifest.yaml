@@ -8,6 +8,28 @@ pipeline:
     max_parallel: 2
     trace_id_policy: "per-instance"
     knowledge_write_lock: true
+  agent_routing:
+    policy: "capability-based"
+    agents:
+      - name: codex
+        capabilities: [implementation, testing, debugging]
+        production: true
+      - name: cursor
+        capabilities: [code_review, refactor, architecture_review]
+        production: true
+        auth_status: needs_login
+        degraded_fallback: "codex.review with degraded_from: cursor"
+    rules:
+      - stage: S5
+        capability: implementation
+        agent: codex
+      - stage: S6
+        capability: testing
+        agent: codex
+      - stage: S7
+        capability: code_review
+        agent: cursor
+        fallback: "codex.review + degraded_from: cursor"
   stages:
     - id: S1
       name: strategy.context.request

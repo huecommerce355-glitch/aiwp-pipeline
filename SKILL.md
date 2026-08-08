@@ -1,7 +1,7 @@
 ---
 name: aiwp-pipeline
 description: Use when orchestrating AI Work Platform pipelines with manifest-driven S1-S8 stages.
-version: 1.2.0
+version: 1.3.0
 author: OpenAI
 license: MIT
 platforms: [Codex, Hermes]
@@ -30,6 +30,12 @@ AI Work Platform 流水线编排层：使用 manifest 驱动 S1-S8 八阶段执�
 将 `pipeline_manifest.yaml` 作为唯一流程声明：读取阶段 ID，解析 gateway、inputs、outputs 和 verification，然后将上下文传递给下一阶段。新增流程时添加模板并复用阶段定义；只有在阶段契约确实不同的时候才新增阶段。
 
 每阶段 HACP 日志至少应包含 pipeline、stage、gateway、inputs 摘要、outputs 摘要、verification 结果和时间/状态。敏感或原始内容遵循对应 gateway 的安全策略。
+
+## Agent Routing
+
+`pipeline_manifest.yaml` 的 `pipeline.agent_routing` 以声明式方式定义 capability-based agent routing。`rules` 将阶段所需 capability 映射到 agent：S5 的 implementation 和 S6 的 testing 使用 `codex`，S7 的 code_review 使用 `cursor`。
+
+Agent 的 `production: true` 表示该 agent 已注册为生产路由候选；`auth_status` 描述当前认证状态，不会将 agent 标记为不可用。若 `cursor` 未登录，review 请求按声明的 `fallback` 降级到 `codex.review`，并保留 `degraded_from: cursor`，以便调用方和日志识别降级来源。
 
 ## Parallel Execution
 
